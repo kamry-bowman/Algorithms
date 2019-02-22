@@ -25,9 +25,6 @@ class Combo:
         return 'value: {}, size: {}, items: {}'.format(self.value, self.size, self.items)
 
 
-empty_sack = Combo()
-
-
 def knapsack_solver(items, capacity):
     items = sorted(items, key=lambda item: item.size)
     cache = [None] * len(items)
@@ -44,12 +41,13 @@ def knapsack_solver(items, capacity):
     for space in range(smallest_size, capacity + 1):
         cache[0][space] = Combo().add_item(items[0])
 
-    # start iterating over items
+    # start iterating over items / rows
     for i in range(1, len(items)):
         cache[i] = {}
         item = items[i]
         (index, size, value) = item
 
+        # iterate over capacities / cols
         for space in range(smallest_size, capacity + 1):
             # first col, either the last row's first col, or just this item, depending on what's larger
             if space == smallest_size:
@@ -59,7 +57,7 @@ def knapsack_solver(items, capacity):
                     cache[i][space] = cache[i - 1][space]
 
             # else, loop through prior items and find largest possible combo
-            # from adding on this item
+            # for this space given the introduction of this item
             else:
 
                 # find out how much space is left at this amount of space after this item is deducted
