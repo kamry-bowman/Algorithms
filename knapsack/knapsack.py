@@ -2,7 +2,6 @@
 
 import sys
 from collections import namedtuple
-from collections import defaultdict
 
 Item = namedtuple('Item', ['index', 'size', 'value'])
 
@@ -27,46 +26,61 @@ class Combo:
 
 
 def knapsack_solver(items, capacity):
-    def helper(i, capacity, cache):
-        # first, check cache
-        print(i, capacity)
+    items = sorted(items, key=lambda item: item.size)
+    cache = [None] * len(items)
+
+    smallest_size = items[0].size
+
+    if smallest_size > capacity:
+        return 'Too small'
+    best_seen = Combo()
+
+    # set up first row, this is the smallest item, so just fill in all the
+    # cols with just it
+    cache[0] = {}
+    for space in range(smallest_size, capacity + 1):
+        cache[0][space] = Combo().add_item(items[0])
+
+    # start iterating over items / rows
+    for i in range(1, len(items)):
+        cache[i] = {}
         item = items[i]
         (index, size, value) = item
-        cached = cache[i][capacity]
-        # print('cached', cached)
 
-        if cached is not None:
-            return cached
+        # iterate over capacities / cols
+        for space in range(smallest_size, capacity + 1):
+            # first col, either the last row's first col, or just this item, depending on what's larger
+            if space == smallest_size:
+                if item.value > cache[i - 1][space].value:
+                    cache[i][space] = Combo().add_item(item)
+                else:
+                    cache[i][space] = cache[i - 1][space]
 
-        elif capacity < 0:
-            combo = Combo()
-
-        elif i == 0:
-            if capacity - size >= 0:
-                combo = Combo().add_item(item)
+            # else, loop through prior items and find largest possible combo
+            # for this space given the introduction of this item
             else:
-                combo = Combo()
 
-        else:
-            # compare two options
-            #  - same capacity with one fewer items
-            #  - this item + remaining capacity and one fewer item
-            last_max = helper(i - 1, capacity, cache)
-            # print('last_max', last_max)
-            if capacity - size >= 0:
-                new_candidate = helper(
-                    i - 1, capacity - size, cache).add_item(item)
-            else:
-                new_candidate = Combo()
+                # find out how much space is left at this amount of space after this item is deducted
+                remaining_space = space - size
 
-            combo = last_max if last_max.value > new_candidate.value else new_candidate
+                # if there is too little space, use prior item row's best value
+                if remaining_space < smallest_size:
+                    cache[i][space] = cache[i - 1][space]
 
-        cache[i][capacity] = combo
-        return combo
+                # otherwise compare value immediately above, to this item.value + the optimal
+                # use of remaining space from prior row
+                else:
 
-    cache = defaultdict(lambda: defaultdict(lambda: None))
-    best = helper(len(items) - 1, capacity, cache)
-    # print(best)
+                    best_fitting = cache[i - 1][remaining_space]
+                    best_seen = cache[i - 1][space]
+
+                    if best_seen.value < best_fitting.value + value:
+                        new_best = best_fitting.add_item(item)
+                        best_seen = new_best
+
+                    cache[i][space] = best_seen
+
+    best = cache[-1][capacity]
     return {'Value': best.value, 'Chosen': sorted(best.items)}
 
 
@@ -84,14 +98,4 @@ if __name__ == '__main__':
         file_contents.close()
         print(knapsack_solver(items, capacity))
     else:
-
         print('Usage: knapsack.py [filename] [capacity]')
-
-# items = [
-#     Item(1, 42, 81),
-#     Item(2, 42, 42),
-#     Item(3, 68, 56),
-#     Item(4, 68, 25),
-#     Item(5, 77, 14),
-# ]
-# knapsack_solver(items, 100)
